@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Janmashtami Seva Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>Janmashtami Dashboard</h2>
+        </div>
+        <nav class="sidebar-nav">
+            <ul>
+                <li><a href="#" class="nav-link active" data-page="home">
+                    <i class="fas fa-home"></i> <span>Home</span>
+                </a></li>
+                <li><a href="#" class="nav-link" data-page="led-tv">
+                    <i class="fas fa-tv"></i> <span>LED/TV</span>
+                </a></li>
+                <li><a href="#" class="nav-link" data-page="equipments">
+                    <i class="fas fa-tools"></i> <span>Equipments</span>
+                </a></li>
+                <li><a href="#" class="nav-link" data-page="pa">
+                    <i class="fas fa-microphone"></i> <span>PA System</span>
+                </a></li>
+                <li><a href="#" class="nav-link" data-page="cctv">
+                    <i class="fas fa-video"></i> <span>CCTV</span>
+                </a></li>
+            </ul>
+        </nav>
+        <div class="sidebar-footer">
+            <div class="last-updated">
+                <i class="fas fa-clock"></i>
+                <span id="last-updated-time">Loading...</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Menu Toggle -->
+    <div class="mobile-menu-toggle" id="mobile-menu-toggle">
+        <i class="fas fa-bars"></i>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="main-content" id="main-content">
+        <!-- Home Page -->
+        <div class="page" id="home-page">
+            <div class="page-header">
+                <h1><i class="fas fa-dashboard"></i> Janmashtami Dashboard Overview</h1>
+                <p>Real-time monitoring of Janmashtami Seva operations across all zones</p>
+            </div>
+            
+            <div class="stats-grid">
+                <div class="stat-card led-tv-card" data-navigate="led-tv">
+                    <div class="stat-icon">
+                        <i class="fas fa-tv"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>LED/TV Systems</h3>
+                        <div class="stat-numbers">
+                            <span class="total-count" id="led-tv-total">0</span>
+                            <div class="stat-breakdown">
+                                <span class="working-count" id="led-tv-working">0 Working</span>
+                                <span class="issues-count" id="led-tv-issues">0 Issues</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+
+                <div class="stat-card equipment-card" data-navigate="equipments">
+                    <div class="stat-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>Equipment</h3>
+                        <div class="stat-numbers">
+                            <span class="total-count" id="equipment-total">0</span>
+                            <div class="stat-breakdown">
+                                <span class="working-count" id="equipment-working">0 Working</span>
+                                <span class="issues-count" id="equipment-issues">0 Issues</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+
+                <div class="stat-card pa-card" data-navigate="pa">
+                    <div class="stat-icon">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>PA System</h3>
+                        <div class="stat-numbers">
+                            <span class="total-count" id="pa-total">0</span>
+                            <div class="stat-breakdown">
+                                <span class="working-count" id="pa-working">0 Working</span>
+                                <span class="issues-count" id="pa-issues">0 Issues</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+
+                <div class="stat-card cctv-card" data-navigate="cctv">
+                    <div class="stat-icon">
+                        <i class="fas fa-video"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3>CCTV</h3>
+                        <div class="stat-numbers">
+                            <span class="total-count" id="cctv-total">0</span>
+                            <div class="stat-breakdown">
+                                <span class="working-count" id="cctv-working">0 Working</span>
+                                <span class="issues-count" id="cctv-issues">0 Issues</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-arrow">
+                        <i class="fas fa-chevron-right"></i>
+                    </div>
+                </div>
+            </div>
+
+            <div class="zone-overview">
+                <h2><i class="fas fa-map-marked-alt"></i> Zone Overview</h2>
+                <div class="zone-grid">
+                    <div class="zone-card">
+                        <h3>Zone 1</h3>
+                        <p>Sectors: 1, 2</p>
+                        <div class="zone-status" id="zone-1-status">Monitoring...</div>
+                    </div>
+                    <div class="zone-card">
+                        <h3>Zone 2</h3>
+                        <p>Sectors: 3, 4, 5, 6</p>
+                        <div class="zone-status" id="zone-2-status">Monitoring...</div>
+                    </div>
+                    <div class="zone-card">
+                        <h3>Zone 3</h3>
+                        <p>Sectors: 7, 8, 11</p>
+                        <div class="zone-status" id="zone-3-status">Monitoring...</div>
+                    </div>
+                    <div class="zone-card">
+                        <h3>Zone 4</h3>
+                        <p>Sectors: 9, 10</p>
+                        <div class="zone-status" id="zone-4-status">Monitoring...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LED/TV Page -->
+        <div class="page" id="led-tv-page" style="display: none;">
+            <div class="page-header">
+                <h1><i class="fas fa-tv"></i> LED/TV Monitoring</h1>
+                <p>Real-time status of LED/TV systems across all zones</p>
+            </div>
+            
+            <div class="page-controls">
+                <div class="search-filter">
+                    <input type="text" id="led-tv-search" placeholder="Search by name, zone, sector...">
+                    <select id="led-tv-status-filter">
+                        <option value="">All Status</option>
+                        <option value="working">Working</option>
+                        <option value="issue">Issues</option>
+                    </select>
+                    <select id="led-tv-zone-filter">
+                        <option value="">All Zones</option>
+                        <option value="Zone 1">Zone 1</option>
+                        <option value="Zone 2">Zone 2</option>
+                        <option value="Zone 3">Zone 3</option>
+                        <option value="Zone 4">Zone 4</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="data-table-container">
+                <table class="data-table" id="led-tv-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Time Stamp</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Zone</th>
+                            <th>Sector</th>
+                            <th>Screen ID</th>
+                            <th>Status</th>
+                            <th>Evidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="led-tv-tbody">
+                        <tr>
+                            <td colspan="9" class="loading-row">Loading LED/TV data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Equipment Page -->
+        <div class="page" id="equipments-page" style="display: none;">
+            <div class="page-header">
+                <h1><i class="fas fa-tools"></i> Equipment Monitoring</h1>
+                <p>Real-time status of equipment across all zones</p>
+            </div>
+            
+            <div class="page-controls">
+                <div class="search-filter">
+                    <input type="text" id="equipment-search" placeholder="Search by name, equipment, location...">
+                    <select id="equipment-status-filter">
+                        <option value="">All Status</option>
+                        <option value="working">Working</option>
+                        <option value="issue">Issues</option>
+                    </select>
+                    <select id="equipment-zone-filter">
+                        <option value="">All Zones</option>
+                        <option value="Zone 1">Zone 1</option>
+                        <option value="Zone 2">Zone 2</option>
+                        <option value="Zone 3">Zone 3</option>
+                        <option value="Zone 4">Zone 4</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="data-table-container">
+                <table class="data-table" id="equipment-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Time Stamp</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Zone</th>
+                            <th>Sector</th>
+                            <th>Location</th>
+                            <th>Equipment</th>
+                            <th>Status</th>
+                            <th>Evidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="equipment-tbody">
+                        <tr>
+                            <td colspan="10" class="loading-row">Loading equipment data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- PA Page -->
+        <div class="page" id="pa-page" style="display: none;">
+            <div class="page-header">
+                <h1><i class="fas fa-microphone"></i> PA System Monitoring</h1>
+                <p>Real-time status of PA systems across all zones</p>
+            </div>
+            
+            <div class="page-controls">
+                <div class="search-filter">
+                    <input type="text" id="pa-search" placeholder="Search by name, equipment, location...">
+                    <select id="pa-status-filter">
+                        <option value="">All Status</option>
+                        <option value="working">Working</option>
+                        <option value="issue">Issues</option>
+                    </select>
+                    <select id="pa-zone-filter">
+                        <option value="">All Zones</option>
+                        <option value="Zone 1">Zone 1</option>
+                        <option value="Zone 2">Zone 2</option>
+                        <option value="Zone 3">Zone 3</option>
+                        <option value="Zone 4">Zone 4</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="data-table-container">
+                <table class="data-table" id="pa-table">
+                    <thead>
+                        <tr>
+                            <th>No.</th>
+                            <th>Time Stamp</th>
+                            <th>Name</th>
+                            <th>Phone</th>
+                            <th>Zone</th>
+                            <th>Sector</th>
+                            <th>Location</th>
+                            <th>PA Equipment</th>
+                            <th>Status</th>
+                            <th>Evidence</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pa-tbody">
+                        <tr>
+                            <td colspan="10" class="loading-row">Loading PA system data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- CCTV Page -->
+        <div class="page" id="cctv-page" style="display: none;">
+            <div class="page-header">
+                <h1><i class="fas fa-video"></i> CCTV Monitoring</h1>
+                <p>CCTV monitoring will be available soon</p>
+            </div>
+            
+            <div class="placeholder-content">
+                <div class="placeholder-icon">
+                    <i class="fas fa-video"></i>
+                </div>
+                <h3>CCTV Monitoring</h3>
+                <p>This section will display CCTV status once the Google Sheet is configured.</p>
+                <div class="placeholder-stats">
+                    <div class="placeholder-stat">
+                        <span class="stat-label">Total Cameras:</span>
+                        <span class="stat-value" id="cctv-placeholder-total">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <p>Loading Janmashtami Dashboard...</p>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
