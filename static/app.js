@@ -259,7 +259,8 @@ class SevaDashboard {
                 
                 if (column === 'STATUS') {
                     cell.textContent = value;
-                    this.applyStatusColor(tr, value);
+                    const alertState = row['ALERT_STATE'] || 'normal';
+                    this.applyStatusColor(tr, value, alertState);
                 } else if (column === 'EVIDENCE' && value && value.startsWith('http')) {
                     const link = document.createElement('a');
                     link.href = value;
@@ -284,13 +285,13 @@ class SevaDashboard {
         this.filterTable(type);
     }
 
-    applyStatusColor(row, status) {
+    applyStatusColor(row, status, alertState = 'normal') {
         const statusLower = status.toString().toLowerCase().trim();
         
-        // Remove existing status classes
-        row.classList.remove('status-working', 'status-issue', 'status-critical');
+        // Remove existing status and alert classes
+        row.classList.remove('status-working', 'status-issue', 'status-critical', 'alert-overdue-issue', 'alert-stale-update');
         
-        // Handle exact Google Sheets values and variations
+        // Apply base status color
         if (statusLower.includes('working-fine') || statusLower.includes('working') || 
             statusLower.includes('fine') || statusLower.includes('ok') || statusLower === 'yes') {
             row.classList.add('status-working');
@@ -301,7 +302,13 @@ class SevaDashboard {
                    statusLower.includes('error') || statusLower === 'no') {
             row.classList.add('status-issue');
         }
-        // Removed critical status handling as requested
+        
+        // Apply alert state classes for time-based alerts
+        if (alertState === 'overdue-issue') {
+            row.classList.add('alert-overdue-issue');
+        } else if (alertState === 'stale-update') {
+            row.classList.add('alert-stale-update');
+        }
     }
 
     filterTable(type) {

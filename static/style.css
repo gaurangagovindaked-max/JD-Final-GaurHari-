@@ -884,6 +884,38 @@ body {
     50% { transform: scale(1.05); }
 }
 
+/* Time-based Alert Animations */
+@keyframes blinkRose {
+    0% { background-color: #FA003F; }
+    50% { background-color: #ff1a5c; }
+    100% { background-color: #FA003F; }
+}
+
+/* Alert States for Time-based Monitoring */
+.alert-overdue-issue {
+    animation: blinkRose 1s ease-in-out infinite !important;
+    border-left: 5px solid #FA003F !important;
+    background-color: #FA003F !important;
+}
+
+.alert-overdue-issue td {
+    animation: blinkRose 1s ease-in-out infinite !important;
+    background-color: #FA003F !important;
+    color: #ffffff !important;
+    font-weight: bold;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+.alert-stale-update {
+    background-color: #FFED29 !important;
+}
+
+.alert-stale-update td {
+    background-color: #FFED29 !important;
+    color: #000000 !important;
+    font-weight: bold;
+}
+
 .pulse {
     animation: pulse 2s infinite;
 }

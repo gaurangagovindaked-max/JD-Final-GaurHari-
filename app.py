@@ -84,6 +84,62 @@ def calculate_statistics(data, status_column='STATUS'):
         'issues': issues
     }
 
+def calculate_alert_states(data, timestamp_column='TIME STAMP', status_column='STATUS'):
+    """Calculate alert states based on time thresholds"""
+    if not data:
+        return data
+    
+    current_time = datetime.now()
+    
+    for item in data:
+        status = str(item.get(status_column, '') or item.get('ISSUE', '')).lower()
+        timestamp_str = str(item.get(timestamp_column, '')).strip()
+        
+        # Parse timestamp
+        timestamp = None
+        if timestamp_str and timestamp_str != 'nan' and timestamp_str != '':
+            try:
+                formats_to_try = [
+                    '%m/%d/%Y %H:%M:%S',
+                    '%m/%d/%Y %I:%M:%S %p',
+                    '%Y-%m-%d %H:%M:%S',
+                    '%Y-%m-%d %I:%M:%S %p',
+                    '%d/%m/%Y %H:%M:%S',
+                    '%d-%m-%Y %H:%M:%S',
+                    '%m/%d/%Y %H:%M',
+                    '%Y-%m-%d %H:%M',
+                    '%m/%d/%Y',
+                    '%Y-%m-%d',
+                ]
+                
+                for fmt in formats_to_try:
+                    try:
+                        timestamp = datetime.strptime(timestamp_str, fmt)
+                        break
+                    except ValueError:
+                        continue
+            except Exception:
+                pass
+        
+        # Calculate alert state
+        alert_state = 'normal'
+        if timestamp:
+            time_diff = (current_time - timestamp).total_seconds()
+            
+            # Check if it's an issue status
+            is_issue = any(word in status for word in ['issue', 'reporting', 'problem', 'not working', 'broken', 'fault', 'error'])
+            
+            if is_issue and time_diff > 15:  # 15 seconds for testing (will be 25 minutes in production)
+                alert_state = 'overdue-issue'
+                logger.info(f"Overdue issue detected: {item.get('NAME', 'Unknown')} - Status: {status} - Time diff: {time_diff}s")
+            elif not is_issue and time_diff > 20:  # 20 seconds for testing (will be longer in production)
+                alert_state = 'stale-update'
+                logger.info(f"Stale update detected: {item.get('NAME', 'Unknown')} - Status: {status} - Time diff: {time_diff}s")
+        
+        item['ALERT_STATE'] = alert_state
+    
+    return data
+
 def sort_data_by_priority(data, timestamp_column='TIME STAMP', status_column='STATUS'):
     """Sort data with latest issues first, then by timestamp descending"""
     if not data:
@@ -142,12 +198,14 @@ def update_data_cache():
     try:
         # Fetch LED/TV data
         led_tv_data = fetch_csv_data(LED_TV_CSV_URL)
+        led_tv_data = calculate_alert_states(led_tv_data)
         led_tv_data = sort_data_by_priority(led_tv_data)
         data_cache['led_tv_data'] = led_tv_data
         data_cache['statistics']['led_tv'] = calculate_statistics(led_tv_data)
         
         # Fetch Equipment data
         equipment_data = fetch_csv_data(EQUIPMENT_CSV_URL, rename_columns={'ISSUE': 'STATUS'})
+        equipment_data = calculate_alert_states(equipment_data, status_column='STATUS')
         equipment_data = sort_data_by_priority(equipment_data, status_column='STATUS')
         data_cache['equipment_data'] = equipment_data
         data_cache['statistics']['equipment'] = calculate_statistics(equipment_data, 'STATUS')
@@ -164,6 +222,7 @@ def update_data_cache():
             'STATUS': 'STATUS',
             'EVIDENCE': 'EVIDENCE'
         })
+        pa_data = calculate_alert_states(pa_data)
         pa_data = sort_data_by_priority(pa_data)
         
         data_cache['pa_data'] = pa_data
