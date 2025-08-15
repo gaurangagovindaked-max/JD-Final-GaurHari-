@@ -313,19 +313,59 @@
         <div class="page" id="cctv-page" style="display: none;">
             <div class="page-header">
                 <h1><i class="fas fa-video"></i> CCTV Monitoring</h1>
-                <p>CCTV monitoring will be available soon</p>
+                <p>Real-time monitoring of CCTV issues across all zones</p>
             </div>
             
-            <div class="placeholder-content">
-                <div class="placeholder-icon">
-                    <i class="fas fa-video"></i>
+            <!-- CCTV Slider Controls -->
+            <div class="cctv-slider-container">
+                <div class="slider-tabs">
+                    <button class="slider-tab active" data-section="live-issues">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Live Issues
+                        <span class="issue-count" id="live-issues-count">0</span>
+                    </button>
+                    <button class="slider-tab" data-section="resolved">
+                        <i class="fas fa-check-circle"></i>
+                        Resolved
+                        <span class="issue-count" id="resolved-count">0</span>
+                    </button>
                 </div>
-                <h3>CCTV Monitoring</h3>
-                <p>This section will display CCTV status once the Google Sheet is configured.</p>
-                <div class="placeholder-stats">
-                    <div class="placeholder-stat">
-                        <span class="stat-label">Total Cameras:</span>
-                        <span class="stat-value" id="cctv-placeholder-total">0</span>
+            </div>
+
+            <!-- Live Issues Section -->
+            <div class="cctv-section active" id="live-issues-section">
+                <div class="section-header">
+                    <h3><i class="fas fa-exclamation-triangle"></i> Live Issues</h3>
+                    <div class="section-controls">
+                        <input type="text" id="live-search" placeholder="Search by zone, sector, or issue...">
+                        <button class="refresh-btn" id="refresh-live">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="cctv-cards-grid" id="live-issues-grid">
+                    <div class="loading-card">
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                        <p>Loading live issues...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resolved Section -->
+            <div class="cctv-section" id="resolved-section" style="display: none;">
+                <div class="section-header">
+                    <h3><i class="fas fa-check-circle"></i> Resolved Issues</h3>
+                    <div class="section-controls">
+                        <input type="text" id="resolved-search" placeholder="Search resolved issues...">
+                        <button class="refresh-btn" id="refresh-resolved">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+                <div class="cctv-cards-grid" id="resolved-grid">
+                    <div class="loading-card">
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                        <p>Loading resolved issues...</p>
                     </div>
                 </div>
             </div>

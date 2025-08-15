@@ -5,6 +5,8 @@ class SevaDashboard {
         this.dataCache = null;
         this.updateInterval = null;
         this.isUpdating = false;
+        this.cctvData = { liveIssues: [], resolved: [] };
+        this.cctvUpdateInterval = null;
         
         this.init();
     }
@@ -12,6 +14,7 @@ class SevaDashboard {
     init() {
         this.setupEventListeners();
         this.setupMobileMenu();
+        this.setupCCTVDashboard();
         this.startDataUpdates();
         this.hideLoadingOverlay();
     }
@@ -127,6 +130,27 @@ class SevaDashboard {
         }
 
         this.currentPage = page;
+
+        // Handle page-specific data updates
+        if (page === 'cctv') {
+            // Stop regular dashboard updates
+            if (this.updateInterval) {
+                clearInterval(this.updateInterval);
+                this.updateInterval = null;
+            }
+            // Start CCTV updates
+            this.startCCTVUpdates();
+        } else {
+            // Stop CCTV updates
+            if (this.cctvUpdateInterval) {
+                clearInterval(this.cctvUpdateInterval);
+                this.cctvUpdateInterval = null;
+            }
+            // Start regular dashboard updates for other pages
+            if (page !== 'cctv') {
+                this.startDataUpdates();
+            }
+        }
 
         // Close mobile menu if open
         if (window.innerWidth <= 768) {
@@ -442,16 +466,407 @@ class SevaDashboard {
         }
     }
 
+    setupCCTVDashboard() {
+        // Setup CCTV slider functionality
+        const sliderTabs = document.querySelectorAll('.slider-tab');
+        sliderTabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const section = tab.getAttribute('data-section');
+                this.switchCCTVSection(section);
+            });
+        });
+
+        // Setup refresh buttons
+        const refreshLive = document.getElementById('refresh-live');
+        const refreshResolved = document.getElementById('refresh-resolved');
+        
+        if (refreshLive) {
+            refreshLive.addEventListener('click', () => this.refreshCCTVData());
+        }
+        
+        if (refreshResolved) {
+            refreshResolved.addEventListener('click', () => this.refreshCCTVData());
+        }
+
+        // Setup search functionality
+        const liveSearch = document.getElementById('live-search');
+        const resolvedSearch = document.getElementById('resolved-search');
+        
+        if (liveSearch) {
+            liveSearch.addEventListener('input', () => this.filterCCTVCards('live'));
+        }
+        
+        if (resolvedSearch) {
+            resolvedSearch.addEventListener('input', () => this.filterCCTVCards('resolved'));
+        }
+
+        // Start CCTV data updates
+        this.startCCTVUpdates();
+    }
+
+    switchCCTVSection(section) {
+        // Update tab states
+        document.querySelectorAll('.slider-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        document.querySelector(`[data-section="${section}"]`).classList.add('active');
+
+        // Update section visibility
+        document.querySelectorAll('.cctv-section').forEach(sec => {
+            sec.style.display = 'none';
+            sec.classList.remove('active');
+        });
+        
+        const targetSection = document.getElementById(`${section}-section`);
+        if (targetSection) {
+            targetSection.style.display = 'block';
+            targetSection.classList.add('active');
+        }
+    }
+
+    async startCCTVUpdates() {
+        // Initial load
+        await this.fetchCCTVData();
+        
+        // Set up periodic updates every 30 seconds
+        this.cctvUpdateInterval = setInterval(() => {
+            this.fetchCCTVData();
+        }, 30000);
+    }
+
+    async fetchCCTVData() {
+        try {
+            // Fetch from both Live-Update and Resolved tabs
+            const liveUrl = 'https://docs.google.com/spreadsheets/d/1KPKr-GZLa2G9twirroyx_atLUsmX9-Xx5-sjK6Co5TU/export?format=csv&gid=1561700426';
+            const resolvedUrl = 'https://docs.google.com/spreadsheets/d/1KPKr-GZLa2G9twirroyx_atLUsmX9-Xx5-sjK6Co5TU/export?format=csv&gid=1099893588';
+            
+            const [liveResponse, resolvedResponse] = await Promise.all([
+                fetch(liveUrl),
+                fetch(resolvedUrl)
+            ]);
+            
+            const liveCSV = await liveResponse.text();
+            const resolvedCSV = await resolvedResponse.text();
+            
+            // Parse live issues (has STATUS column)
+            this.cctvData.liveIssues = this.parseCSV(liveCSV);
+            
+            // Parse resolved issues (has 6 columns with resolved timestamp at the end)
+            const resolvedData = this.parseCSV(resolvedCSV);
+            // Add RESOLVED_AT field from the 6th column for resolved issues
+            this.cctvData.resolved = resolvedData.map(issue => {
+                const keys = Object.keys(issue);
+                if (keys.length >= 6) {
+                    issue['RESOLVED_AT'] = issue[keys[5]] || '';
+                }
+                return issue;
+            });
+            
+
+            
+            this.updateCCTVUI();
+            
+        } catch (error) {
+            console.error('Error fetching CCTV data:', error);
+            this.showCCTVError('Failed to load CCTV data. Please try again.');
+        }
+    }
+
+    parseCSV(csvText) {
+        const lines = csvText.split('\n');
+        if (lines.length < 2) return [];
+        
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        const data = [];
+        
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
+            
+            const values = this.parseCSVLine(line);
+            if (values.length === headers.length) {
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header] = values[index] || '';
+                });
+                data.push(row);
+            }
+        }
+        
+        return data;
+    }
+
+    parseCSVLine(line) {
+        const result = [];
+        let current = '';
+        let inQuotes = false;
+        
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                result.push(current.trim());
+                current = '';
+            } else {
+                current += char;
+            }
+        }
+        
+        result.push(current.trim());
+        return result;
+    }
+
+    updateCCTVUI() {
+        this.updateCCTVCounts();
+        this.renderCCTVCards('live', this.cctvData.liveIssues);
+        this.renderCCTVCards('resolved', this.cctvData.resolved);
+    }
+
+    updateCCTVCounts() {
+        const liveCount = document.getElementById('live-issues-count');
+        const resolvedCount = document.getElementById('resolved-count');
+        
+        if (liveCount) {
+            liveCount.textContent = this.cctvData.liveIssues.length;
+        }
+        
+        if (resolvedCount) {
+            resolvedCount.textContent = this.cctvData.resolved.length;
+        }
+    }
+
+    renderCCTVCards(type, data) {
+        const gridId = type === 'live' ? 'live-issues-grid' : 'resolved-grid';
+        const grid = document.getElementById(gridId);
+        
+        if (!grid) return;
+        
+        if (data.length === 0) {
+            grid.innerHTML = `
+                <div class="no-issues-message">
+                    <i class="fas fa-${type === 'live' ? 'check-circle' : 'history'}"></i>
+                    <h3>No ${type === 'live' ? 'Live Issues' : 'Resolved Issues'}</h3>
+                    <p>${type === 'live' ? 'All systems are running smoothly!' : 'No resolved issues to display.'}</p>
+                </div>
+            `;
+            return;
+        }
+        
+        const cardsHTML = data.map(issue => this.createCCTVCard(issue, type === 'resolved')).join('');
+        grid.innerHTML = cardsHTML;
+        
+        // Initialize media previews
+        this.initializeMediaPreviews(grid);
+    }
+
+    createCCTVCard(issue, isResolved = false) {
+        // Use correct column names from CSV structure
+        const issueTimestamp = issue['TIME STAMP'] || issue['Timestamp'] || '';
+        const resolvedTimestamp = issue['RESOLVED_AT'] || issue['Resolved_At'] || '';
+        const zone = issue['ZONE'] || issue['Zone'] || 'N/A';
+        const sector = issue['SECTOR'] || issue['Sector'] || 'N/A';
+        const issueDetails = issue['ISSUE'] || issue['Issue'] || issue['Issue-details'] || issue['Issue Details'] || 'N/A';
+        const evidence = issue['Evidence'] || issue['Drive Link'] || '';
+        
+        // Use appropriate timestamp based on card type
+        const displayTimestamp = isResolved ? (resolvedTimestamp || issueTimestamp) : issueTimestamp;
+        
+        const cardClass = isResolved ? 'cctv-card resolved' : 'cctv-card';
+        const iconClass = isResolved ? 'fas fa-check-circle' : 'fas fa-exclamation-triangle';
+        const statusText = isResolved ? 'Resolved' : 'Live Issue';
+        
+        return `
+            <div class="${cardClass}">
+                <div class="cctv-card-header">
+                    <h4 class="cctv-card-title">
+                        <i class="${iconClass}"></i>
+                        ${statusText}
+                    </h4>
+                    <div class="cctv-card-timestamp">${this.formatCCTVTimestamp(displayTimestamp)}</div>
+                </div>
+                <div class="cctv-card-body">
+                    <div class="cctv-card-details">
+                        <div class="detail-item">
+                            <span class="detail-label">Zone</span>
+                            <span class="detail-value">${zone}</span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Sector</span>
+                            <span class="detail-value">${sector}</span>
+                        </div>
+                    </div>
+                    <div class="cctv-card-issue">
+                        <div class="issue-label">Issue Details</div>
+                        <div class="issue-description">${issueDetails}</div>
+                    </div>
+                    ${evidence ? this.createMediaPreview(evidence) : ''}
+                </div>
+            </div>
+        `;
+    }
+
+    createMediaPreview(driveLink) {
+        if (!driveLink || driveLink === 'N/A') {
+            return `
+                <div class="cctv-card-media">
+                    <div class="media-placeholder">
+                        <i class="fas fa-image"></i>
+                        <span>No media available</span>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Extract file ID from Google Drive link
+        const fileId = this.extractGoogleDriveFileId(driveLink);
+        
+        if (fileId) {
+            const thumbnailUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w300`;
+            const previewUrl = `https://drive.google.com/file/d/${fileId}/preview`;
+            
+            return `
+                <div class="cctv-card-media">
+                    <img class="media-preview" 
+                         src="${thumbnailUrl}" 
+                         alt="Evidence" 
+                         data-preview-url="${previewUrl}"
+                         onerror="this.parentElement.innerHTML='<div class=\"media-error\"><i class=\"fas fa-exclamation-triangle\"></i><span>Failed to load media</span></div>'">
+                </div>
+            `;
+        }
+        
+        return `
+            <div class="cctv-card-media">
+                <div class="media-error">
+                    <i class="fas fa-link"></i>
+                    <span>Invalid drive link</span>
+                </div>
+            </div>
+        `;
+    }
+
+    extractGoogleDriveFileId(url) {
+        const patterns = [
+            /\/file\/d\/([a-zA-Z0-9-_]+)/,
+            /id=([a-zA-Z0-9-_]+)/,
+            /\/open\?id=([a-zA-Z0-9-_]+)/
+        ];
+        
+        for (const pattern of patterns) {
+            const match = url.match(pattern);
+            if (match) {
+                return match[1];
+            }
+        }
+        
+        return null;
+    }
+
+    initializeMediaPreviews(container) {
+        const mediaElements = container.querySelectorAll('.media-preview');
+        mediaElements.forEach(img => {
+            img.addEventListener('click', () => {
+                const previewUrl = img.getAttribute('data-preview-url');
+                if (previewUrl) {
+                    window.open(previewUrl, '_blank');
+                }
+            });
+            
+            img.style.cursor = 'pointer';
+            img.title = 'Click to view full size';
+        });
+    }
+
+    formatCCTVTimestamp(timestamp) {
+        if (!timestamp || timestamp === 'N/A') {
+            return 'Unknown time';
+        }
+        
+        try {
+            const date = new Date(timestamp);
+            if (isNaN(date.getTime())) {
+                return timestamp; // Return original if can't parse
+            }
+            
+            return date.toLocaleString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        } catch (error) {
+            return timestamp;
+        }
+    }
+
+    filterCCTVCards(type) {
+        const searchId = type === 'live' ? 'live-search' : 'resolved-search';
+        const gridId = type === 'live' ? 'live-issues-grid' : 'resolved-grid';
+        
+        const searchInput = document.getElementById(searchId);
+        const grid = document.getElementById(gridId);
+        
+        if (!searchInput || !grid) return;
+        
+        const searchTerm = searchInput.value.toLowerCase();
+        const cards = grid.querySelectorAll('.cctv-card');
+        
+        cards.forEach(card => {
+            const text = card.textContent.toLowerCase();
+            const isVisible = text.includes(searchTerm);
+            card.style.display = isVisible ? 'block' : 'none';
+        });
+    }
+
+    refreshCCTVData() {
+        const refreshButtons = document.querySelectorAll('.refresh-btn');
+        refreshButtons.forEach(btn => {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Refreshing...';
+        });
+        
+        this.fetchCCTVData().finally(() => {
+            refreshButtons.forEach(btn => {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+            });
+        });
+    }
+
+    showCCTVError(message) {
+        const grids = ['live-issues-grid', 'resolved-grid'];
+        grids.forEach(gridId => {
+            const grid = document.getElementById(gridId);
+            if (grid) {
+                grid.innerHTML = `
+                    <div class="loading-card">
+                        <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+                        <p>${message}</p>
+                        <button class="refresh-btn" onclick="dashboard.refreshCCTVData()">
+                            <i class="fas fa-sync-alt"></i> Try Again
+                        </button>
+                    </div>
+                `;
+            }
+        });
+    }
+
     destroy() {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
+        }
+        if (this.cctvUpdateInterval) {
+            clearInterval(this.cctvUpdateInterval);
         }
     }
 }
 
 // Initialize dashboard when DOM is loaded
+let dashboard;
 document.addEventListener('DOMContentLoaded', () => {
-    window.sevaDashboard = new SevaDashboard();
+    dashboard = new SevaDashboard();
 });
 
 // Handle page visibility changes to pause/resume updates

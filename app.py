@@ -18,6 +18,8 @@ CORS(app)
 LED_TV_CSV_URL = "https://docs.google.com/spreadsheets/d/1-CnYZapqRr7NS2kJgt48vk9XfFFp5IO2Fphp5MNuh-8/export?format=csv&gid=636068897"
 EQUIPMENT_CSV_URL = "https://docs.google.com/spreadsheets/d/1FAZx008XFihdOWz7rDFqTpOcVwn16YXRtYBkI6TFZQs/export?format=csv&gid=1255715346"
 PA_CSV_URL = "https://docs.google.com/spreadsheets/d/1d0gLnq4C5OfjsAGFYnL0CfWFUDjpes_RifySeMY8Px8/export?format=csv&gid=802546674"
+CCTV_LIVE_CSV_URL = "https://docs.google.com/spreadsheets/d/1KPKr-GZLa2G9twirroyx_atLUsmX9-Xx5-sjK6Co5TU/export?format=csv&gid=1561700426"
+CCTV_RESOLVED_CSV_URL = "https://docs.google.com/spreadsheets/d/1KPKr-GZLa2G9twirroyx_atLUsmX9-Xx5-sjK6Co5TU/export?format=csv&gid=1099893588"
 
 # Global data cache
 data_cache = {
@@ -191,6 +193,36 @@ def sort_data_by_priority(data, timestamp_column='TIME STAMP', status_column='ST
     
     return sorted(data, key=get_sort_key)
 
+def fetch_cctv_statistics():
+    """Fetch CCTV data and calculate statistics"""
+    try:
+        # Fetch live issues
+        live_response = requests.get(CCTV_LIVE_CSV_URL, timeout=10)
+        live_count = 0
+        if live_response.status_code == 200:
+            live_lines = live_response.text.strip().split('\n')
+            # Count non-header lines
+            live_count = max(0, len(live_lines) - 1) if len(live_lines) > 1 else 0
+        
+        # Fetch resolved issues
+        resolved_response = requests.get(CCTV_RESOLVED_CSV_URL, timeout=10)
+        resolved_count = 0
+        if resolved_response.status_code == 200:
+            resolved_lines = resolved_response.text.strip().split('\n')
+            # Count non-header lines
+            resolved_count = max(0, len(resolved_lines) - 1) if len(resolved_lines) > 1 else 0
+        
+        total_count = live_count + resolved_count
+        
+        return {
+            'total': total_count,
+            'working': resolved_count,  # Resolved issues are "working" (fixed)
+            'issues': live_count        # Live issues are current problems
+        }
+    except Exception as e:
+        logger.error(f"Error fetching CCTV statistics: {str(e)}")
+        return {'total': 0, 'working': 0, 'issues': 0}
+
 def update_data_cache():
     """Update the global data cache with fresh data from Google Sheets"""
     global data_cache
@@ -228,9 +260,9 @@ def update_data_cache():
         data_cache['pa_data'] = pa_data
         data_cache['statistics']['pa'] = calculate_statistics(pa_data)
         
-        # CCTV data (placeholder for future)
+        # Fetch CCTV statistics
         data_cache['cctv_data'] = []
-        data_cache['statistics']['cctv'] = {'total': 0, 'working': 0, 'issues': 0}
+        data_cache['statistics']['cctv'] = fetch_cctv_statistics()
         
         # Update timestamp
         data_cache['last_updated'] = datetime.now().isoformat()
